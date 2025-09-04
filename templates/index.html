@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 AI 图像生成器</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .loading {
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+        .image-container {
+            transition: transform 0.3s ease;
+        }
+        .image-container:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 头部 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-4">
+                🎨 AI 图像生成器
+            </h1>
+            <p class="text-lg text-gray-200">使用 FLUX AI 模型创造惊艳的图像</p>
+        </div>
+
+        <!-- 功能选项卡 -->
+        <div class="flex justify-center mb-6">
+            <div class="glass rounded-lg p-2">
+                <button id="text2img-tab" class="px-6 py-2 rounded-md text-white bg-blue-500 mr-2 transition-all">
+                    <i class="fas fa-magic mr-2"></i>文字生图
+                </button>
+                <button id="img2img-tab" class="px-6 py-2 rounded-md text-white hover:bg-blue-500 transition-all">
+                    <i class="fas fa-image mr-2"></i>图生图
+                </button>
+            </div>
+        </div>
+
+        <!-- 文字生图界面 -->
+        <div id="text2img-panel" class="glass rounded-lg p-6 mb-6">
+            <div class="max-w-2xl mx-auto">
+                <div class="mb-4">
+                    <label class="block text-white text-sm font-bold mb-2">
+                        <i class="fas fa-robot mr-2"></i>选择模型
+                    </label>
+                    <select id="text-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
+                        <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
+                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
+                        <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
+                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                        <option value="meta/llama-2-11b-vision-instruct">Llama Vision (多模态)</option>
+                        <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet (智能)</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm font-bold mb-2">
+                        <i class="fas fa-pen mr-2"></i>输入提示词
+                    </label>
+                    <textarea 
+                        id="text-prompt" 
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"
+                        placeholder="描述你想要生成的图像，例如：a beautiful sunset over mountains, digital art"
+                    ></textarea>
+                </div>
+                <button 
+                    id="generate-btn" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
+                >
+                    <i class="fas fa-wand-magic-sparkles mr-2"></i>生成图像
+                </button>
+            </div>
+        </div>
+
+        <!-- 图生图界面 -->
+        <div id="img2img-panel" class="glass rounded-lg p-6 mb-6 hidden">
+            <div class="max-w-2xl mx-auto">
+                <div class="mb-4">
+                    <label class="block text-white text-sm font-bold mb-2">
+                        <i class="fas fa-robot mr-2"></i>选择模型
+                    </label>
+                    <select id="img-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                        <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
+                        <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
+                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
+                        <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
+                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm font-bold mb-2">
+                        <i class="fas fa-upload mr-2"></i>上传原图（最多3张）
+                    </label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <input type="file" id="image-upload" accept="image/*" multiple max="3" class="hidden">
+                        <div id="drop-zone" class="cursor-pointer">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-white">点击或拖拽图像文件到这里</p>
+                            <p class="text-sm text-gray-300 mt-2">支持 JPG, PNG 格式，最多选择3张图片</p>
+                        </div>
+                        <div id="preview-container" class="hidden mt-4">
+                            <div class="text-sm text-gray-300 mb-2">已选择 <span id="selected-count">0</span> 张图片:</div>
+                            <div id="preview-grid" class="grid grid-cols-3 gap-2 max-w-md mx-auto">
+                                <!-- 预览图片会显示在这里 -->
+                            </div>
+                            <button id="clear-images" class="mt-2 text-red-400 hover:text-red-300 text-sm">
+                                <i class="fas fa-trash mr-1"></i>清除所有图片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-white text-sm font-bold mb-2">
+                        <i class="fas fa-pen mr-2"></i>修改提示词
+                    </label>
+                    <textarea 
+                        id="img-prompt" 
+                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"
+                        placeholder="描述你希望如何修改这张图像"
+                    ></textarea>
+                </div>
+                <button 
+                    id="img2img-btn" 
+                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
+                    disabled
+                >
+                    <i class="fas fa-magic mr-2"></i>生成新图像
+                </button>
+            </div>
+        </div>
+
+        <!-- 加载动画 -->
+        <div id="loading" class="loading text-center text-white">
+            <div class="glass rounded-lg p-6 max-w-md mx-auto">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                <p class="text-lg">🎨 AI 正在创作中...</p>
+                <p class="text-sm text-gray-300 mt-2">这可能需要几秒钟</p>
+            </div>
+        </div>
+
+        <!-- 结果展示 -->
+        <div id="result" class="hidden text-center">
+            <div class="glass rounded-lg p-6 max-w-2xl mx-auto">
+                <h3 class="text-xl font-bold text-white mb-4">生成结果</h3>
+                <div class="image-container">
+                    <img id="result-image" class="max-w-full rounded-lg shadow-lg mx-auto mb-4">
+                </div>
+                <p id="result-prompt" class="text-gray-200 mb-4 italic"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                        <i class="fas fa-download mr-2"></i>下载
+                    </button>
+                    <button id="generate-again-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                        <i class="fas fa-redo mr-2"></i>再次生成
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片画廊 -->
+        <div class="mt-8">
+            <h3 class="text-2xl font-bold text-white text-center mb-6">
+                <i class="fas fa-images mr-2"></i>最近生成的图像
+            </h3>
+            <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <!-- 图像会动态加载到这里 -->
+            </div>
+            
+            <!-- 分页控件 -->
+            <div id="pagination" class="flex justify-center items-center space-x-4 mt-6">
+                <button id="prev-btn" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-chevron-left mr-2"></i>上一页
+                </button>
+                
+                <div id="page-info" class="glass px-4 py-2 rounded-lg text-white">
+                    第 <span id="current-page">1</span> 页，共 <span id="total-pages">1</span> 页
+                </div>
+                
+                <button id="next-btn" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    下一页<i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilename = null;
+        let currentPage = 1;
+        let imagesPerPage = 9;  // 每页显示9张图片（3x3网格）
+        let totalImages = 0;
+        let allImages = [];
+
+        // 选项卡切换
+        document.getElementById('text2img-tab').addEventListener('click', function() {
+            switchTab('text2img');
+        });
+
+        document.getElementById('img2img-tab').addEventListener('click', function() {
+            switchTab('img2img');
+        });
+
+        function switchTab(tab) {
+            // 更新按钮样式
+            document.querySelectorAll('[id$="-tab"]').forEach(btn => {
+                btn.classList.remove('bg-blue-500');
+                btn.classList.add('hover:bg-blue-500');
+            });
+            document.getElementById(tab + '-tab').classList.add('bg-blue-500');
+            document.getElementById(tab + '-tab').classList.remove('hover:bg-blue-500');
+
+            // 切换面板
+            document.getElementById('text2img-panel').classList.toggle('hidden', tab !== 'text2img');
+            document.getElementById('img2img-panel').classList.toggle('hidden', tab !== 'img2img');
+        }
+
+        // 文字生图
+        document.getElementById('generate-btn').addEventListener('click', function() {
+            const prompt = document.getElementById('text-prompt').value.trim();
+            const model = document.getElementById('text-model-select').value;
+            if (!prompt) {
+                alert('请输入提示词！');
+                return;
+            }
+            generateImage(prompt, model, 'text2img');
+        });
+
+        // 图生图
+        document.getElementById('img2img-btn').addEventListener('click', function() {
+            const prompt = document.getElementById('img-prompt').value.trim();
+            const model = document.getElementById('img-model-select').value;
+            const fileInput = document.getElementById('image-upload');
+            if (!prompt) {
+                alert('请输入提示词！');
+                return;
+            }
+            if (!fileInput.files.length) {
+                alert('请上传图像！');
+                return;
+            }
+            if (fileInput.files.length > 3) {
+                alert('最多只能上传3张图片！');
+                return;
+            }
+            generateImageFromImage(prompt, fileInput.files, model);
+        });
+
+        // 文件上传处理
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('image-upload');
+        const previewContainer = document.getElementById('preview-container');
+        const previewGrid = document.getElementById('preview-grid');
+        const selectedCount = document.getElementById('selected-count');
+        const img2imgBtn = document.getElementById('img2img-btn');
+        const clearImagesBtn = document.getElementById('clear-images');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            const files = Array.from(e.dataTransfer.files);
+            
+            // 只保留图片文件，最多3张
+            const imageFiles = files.filter(file => file.type.startsWith('image/')).slice(0, 3);
+            
+            if (imageFiles.length > 0) {
+                // 创建新的FileList
+                const dt = new DataTransfer();
+                imageFiles.forEach(file => dt.items.add(file));
+                fileInput.files = dt.files;
+                handleFileSelect();
+            }
+        });
+
+        clearImagesBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            previewContainer.classList.add('hidden');
+            previewGrid.innerHTML = '';
+            selectedCount.textContent = '0';
+            img2imgBtn.disabled = true;
+            img2imgBtn.classList.add('opacity-50');
+        });
+
+        function handleFileSelect() {
+            const files = Array.from(fileInput.files);
+            
+            if (files.length > 3) {
+                alert('最多只能选择3张图片！');
+                return;
+            }
+            
+            if (files.length > 0) {
+                updatePreview(files);
+                img2imgBtn.disabled = false;
+                img2imgBtn.classList.remove('opacity-50');
+            } else {
+                previewContainer.classList.add('hidden');
+                img2imgBtn.disabled = true;
+                img2imgBtn.classList.add('opacity-50');
+            }
+        }
+
+        function updatePreview(files) {
+            previewGrid.innerHTML = '';
+            selectedCount.textContent = files.length;
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'relative';
+                    previewDiv.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg">
+                        <button onclick="removeImage(${index})" 
+                                class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                            ×
+                        </button>
+                        <div class="text-xs text-gray-300 mt-1 text-center truncate">${file.name}</div>
+                    `;
+                    previewGrid.appendChild(previewDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            previewContainer.classList.remove('hidden');
+        }
+
+        function removeImage(index) {
+            const dt = new DataTransfer();
+            const files = Array.from(fileInput.files);
+            
+            files.forEach((file, i) => {
+                if (i !== index) {
+                    dt.items.add(file);
+                }
+            });
+            
+            fileInput.files = dt.files;
+            handleFileSelect();
+        }
+
+        // 生成图像（文字生图）
+        function generateImage(prompt, model, type = 'text2img') {
+            showLoading();
+            
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    prompt: prompt,
+                    model: model
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showResult(data.image_url, data.prompt, data.filename, data.model);
+                    loadGallery();
+                } else {
+                    alert('生成失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('请求失败: ' + error.message);
+            });
+        }
+
+        // 图生图
+        function generateImageFromImage(prompt, files, model) {
+            showLoading();
+            
+            const formData = new FormData();
+            
+            // 添加所有图片文件
+            Array.from(files).forEach((file, index) => {
+                formData.append(`image${index}`, file);
+            });
+            
+            formData.append('prompt', prompt);
+            formData.append('model', model);
+            formData.append('imageCount', files.length);
+
+            fetch('/img2img', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showResult(data.image_url, data.prompt, data.filename, data.model);
+                    loadGallery();
+                } else {
+                    alert('生成失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('请求失败: ' + error.message);
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('result').classList.add('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function showResult(imageUrl, prompt, filename, model) {
+            currentFilename = filename;
+            document.getElementById('result-image').src = imageUrl;
+            document.getElementById('result-prompt').innerHTML = `<strong>提示词:</strong> "${prompt}"<br><strong>模型:</strong> ${model}`;
+            document.getElementById('result').classList.remove('hidden');
+            
+            // 滚动到结果
+            document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 下载图像
+        document.getElementById('download-btn').addEventListener('click', function() {
+            if (currentFilename) {
+                window.open(`/download/${currentFilename}`, '_blank');
+            }
+        });
+
+        // 再次生成
+        document.getElementById('generate-again-btn').addEventListener('click', function() {
+            document.getElementById('result').classList.add('hidden');
+        });
+
+        // 加载画廊
+        function loadGallery() {
+            fetch('/gallery')
+                .then(response => response.json())
+                .then(data => {
+                    allImages = data.images;
+                    totalImages = allImages.length;
+                    displayPage(currentPage);
+                    updatePagination();
+                })
+                .catch(error => console.error('加载画廊失败:', error));
+        }
+
+        // 显示指定页面的图像
+        function displayPage(page) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+            
+            const startIndex = (page - 1) * imagesPerPage;
+            const endIndex = Math.min(startIndex + imagesPerPage, totalImages);
+            const pageImages = allImages.slice(startIndex, endIndex);
+            
+            pageImages.forEach(image => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'glass rounded-lg p-2 image-container relative';
+                imageDiv.innerHTML = `
+                    <img src="${image.url}" class="w-full h-48 object-cover rounded-lg mb-2" alt="Generated image">
+                    <div class="text-center">
+                        <p class="text-xs text-gray-300">${image.created}</p>
+                        <div class="flex gap-2 justify-center mt-2">
+                            <button onclick="window.open('/download/${image.filename}', '_blank')" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition-all">
+                                <i class="fas fa-download mr-1"></i>下载
+                            </button>
+                            <button onclick="deleteImage('${image.filename}')" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition-all">
+                                <i class="fas fa-trash mr-1"></i>删除
+                            </button>
+                        </div>
+                    </div>
+                `;
+                gallery.appendChild(imageDiv);
+            });
+        }
+
+        // 更新分页控件
+        function updatePagination() {
+            const totalPages = Math.ceil(totalImages / imagesPerPage);
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const currentPageSpan = document.getElementById('current-page');
+            const totalPagesSpan = document.getElementById('total-pages');
+            const paginationDiv = document.getElementById('pagination');
+            
+            // 更新页面信息
+            currentPageSpan.textContent = currentPage;
+            totalPagesSpan.textContent = totalPages;
+            
+            // 更新按钮状态
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            
+            // 如果只有一页或没有图片，隐藏分页控件
+            if (totalPages <= 1) {
+                paginationDiv.style.display = 'none';
+            } else {
+                paginationDiv.style.display = 'flex';
+            }
+        }
+
+        // 分页按钮事件监听
+        document.getElementById('prev-btn').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayPage(currentPage);
+                updatePagination();
+            }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', function() {
+            const totalPages = Math.ceil(totalImages / imagesPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayPage(currentPage);
+                updatePagination();
+            }
+        });
+
+        // 页面加载完成后加载画廊
+        document.addEventListener('DOMContentLoaded', loadGallery);
+
+        // 删除图片功能
+        function deleteImage(filename) {
+            if (confirm('确定要删除这张图片吗？删除后无法恢复。')) {
+                fetch(`/delete/${filename}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 重新加载画廊
+                        loadGallery();
+                        // 如果删除的是当前显示的结果图片，则隐藏结果区域
+                        if (currentFilename === filename) {
+                            document.getElementById('result').classList.add('hidden');
+                            currentFilename = null;
+                        }
+                        
+                        // 如果当前页面没有图片了，回到上一页
+                        const totalPages = Math.ceil((totalImages - 1) / imagesPerPage);
+                        if (currentPage > totalPages && totalPages > 0) {
+                            currentPage = totalPages;
+                        }
+                    } else {
+                        alert('删除失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('删除请求失败: ' + error.message);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
