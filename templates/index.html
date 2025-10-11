@@ -10,10 +10,18 @@
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        .dark .gradient-bg,
+        body.dark {
+            background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+        }
         .glass {
             backdrop-filter: blur(10px);
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass {
+            background: rgba(17, 24, 39, 0.6);
+            border-color: rgba(255,255,255,0.08);
         }
         .loading {
             display: none;
@@ -32,11 +40,19 @@
 <body class="gradient-bg min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <!-- 头部 -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-white mb-4">
-                🎨 AI 图像生成器
-            </h1>
-            <p class="text-lg text-gray-200">使用 FLUX AI 模型创造惊艳的图像</p>
+        <div class="flex items-center justify-between mb-8">
+            <div class="text-center md:text-left">
+                <h1 class="text-4xl font-bold text-white mb-2">
+                    🎨 AI 图像生成器
+                </h1>
+                <p class="text-lg text-gray-200">使用最新的 FLUX 1.1 Pro Ultra 和其他顶级 AI 模型创造惊艳的图像</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="theme-toggle" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all flex items-center gap-2">
+                    <i id="theme-icon" class="fas fa-moon"></i>
+                    <span id="theme-text">深色</span>
+                </button>
+            </div>
         </div>
 
         <!-- 功能选项卡 -->
@@ -59,14 +75,14 @@
                         <i class="fas fa-robot mr-2"></i>选择模型
                     </label>
                     <select id="text-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                        <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
+                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
                         <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
                         <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
-                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
                         <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
-                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
-                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
                         <option value="meta/llama-2-11b-vision-instruct">Llama Vision (多模态)</option>
-                        <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet (智能)</option>
                     </select>
                 </div>
                 <div class="mb-4">
@@ -96,12 +112,13 @@
                         <i class="fas fa-robot mr-2"></i>选择模型
                     </label>
                     <select id="img-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                        <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
                         <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
                         <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
                         <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
-                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
                         <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
-                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
                     </select>
                 </div>
                 <div class="mb-4">
@@ -163,9 +180,18 @@
                     <img id="result-image" class="max-w-full rounded-lg shadow-lg mx-auto mb-4">
                 </div>
                 <p id="result-prompt" class="text-gray-200 mb-4 italic"></p>
-                <div class="flex justify-center space-x-4">
+                <div class="flex justify-center flex-wrap gap-3">
                     <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
                         <i class="fas fa-download mr-2"></i>下载
+                    </button>
+                    <button id="copy-prompt-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                        <i class="fas fa-copy mr-2"></i>复制提示词
+                    </button>
+                    <button id="copy-link-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                        <i class="fas fa-link mr-2"></i>复制链接
+                    </button>
+                    <button id="delete-current-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                        <i class="fas fa-trash mr-2"></i>删除本图
                     </button>
                     <button id="generate-again-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
                         <i class="fas fa-redo mr-2"></i>再次生成
@@ -179,6 +205,27 @@
             <h3 class="text-2xl font-bold text-white text-center mb-6">
                 <i class="fas fa-images mr-2"></i>最近生成的图像
             </h3>
+            <div class="glass rounded-lg p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input id="search-input" placeholder="搜索文件名或提示词" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" />
+                    <select id="model-filter" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="">全部模型</option>
+                        <option value="google/nano-banana">Google Nano Banana</option>
+                        <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra</option>
+                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro</option>
+                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro</option>
+                        <option value="google/imagen-4">Google Imagen 4</option>
+                        <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo</option>
+                        <option value="black-forest-labs/flux-dev">FLUX Dev</option>
+                    </select>
+                    <select id="time-filter" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="">全部时间</option>
+                        <option value="24h">近24小时</option>
+                        <option value="7d">近7天</option>
+                        <option value="30d">近30天</option>
+                    </select>
+                </div>
+            </div>
             <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 <!-- 图像会动态加载到这里 -->
             </div>
@@ -202,15 +249,25 @@
 
     <script>
         let currentFilename = null;
+        let currentPrompt = '';
+        let currentModel = '';
         let currentPage = 1;
         let imagesPerPage = 9;  // 每页显示9张图片（3x3网格）
         let totalImages = 0;
         let allImages = [];
+        let filteredImages = [];
 
         // 选项卡切换
         document.getElementById('text2img-tab').addEventListener('click', function() {
             switchTab('text2img');
         });
+
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+        initTheme();
+        themeToggle.addEventListener('click', toggleTheme);
+
 
         document.getElementById('img2img-tab').addEventListener('click', function() {
             switchTab('img2img');
@@ -443,6 +500,8 @@
 
         function showResult(imageUrl, prompt, filename, model) {
             currentFilename = filename;
+            currentPrompt = prompt;
+            currentModel = model;
             document.getElementById('result-image').src = imageUrl;
             document.getElementById('result-prompt').innerHTML = `<strong>提示词:</strong> "${prompt}"<br><strong>模型:</strong> ${model}`;
             document.getElementById('result').classList.remove('hidden');
@@ -451,10 +510,26 @@
             document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // 下载图像
+        // 下载/复制/删除当前结果
         document.getElementById('download-btn').addEventListener('click', function() {
             if (currentFilename) {
                 window.open(`/download/${currentFilename}`, '_blank');
+            }
+        });
+        document.getElementById('copy-prompt-btn').addEventListener('click', async function() {
+            if (currentPrompt) {
+                await navigator.clipboard.writeText(currentPrompt);
+            }
+        });
+        document.getElementById('copy-link-btn').addEventListener('click', async function() {
+            if (currentFilename) {
+                const link = `${location.origin}/static/images/${currentFilename}`;
+                await navigator.clipboard.writeText(link);
+            }
+        });
+        document.getElementById('delete-current-btn').addEventListener('click', function() {
+            if (currentFilename) {
+                deleteImage(currentFilename);
             }
         });
 
@@ -469,9 +544,7 @@
                 .then(response => response.json())
                 .then(data => {
                     allImages = data.images;
-                    totalImages = allImages.length;
-                    displayPage(currentPage);
-                    updatePagination();
+                    applyFilters();
                 })
                 .catch(error => console.error('加载画廊失败:', error));
         }
@@ -483,7 +556,7 @@
             
             const startIndex = (page - 1) * imagesPerPage;
             const endIndex = Math.min(startIndex + imagesPerPage, totalImages);
-            const pageImages = allImages.slice(startIndex, endIndex);
+            const pageImages = filteredImages.slice(startIndex, endIndex);
             
             pageImages.forEach(image => {
                 const imageDiv = document.createElement('div');
@@ -551,6 +624,42 @@
             }
         });
 
+        // 过滤与搜索
+        const searchInput = document.getElementById('search-input');
+        const modelFilter = document.getElementById('model-filter');
+        const timeFilter = document.getElementById('time-filter');
+        if (searchInput) searchInput.addEventListener('input', () => { currentPage = 1; applyFilters(); });
+        if (modelFilter) modelFilter.addEventListener('change', () => { currentPage = 1; applyFilters(); });
+        if (timeFilter) timeFilter.addEventListener('change', () => { currentPage = 1; applyFilters(); });
+
+        function applyFilters() {
+            const q = (searchInput ? searchInput.value : '').toLowerCase();
+            const modelVal = modelFilter ? modelFilter.value : '';
+            const timeVal = timeFilter ? timeFilter.value : '';
+            const now = Date.now();
+
+            filteredImages = allImages.filter(img => {
+                let ok = true;
+                if (q) {
+                    const text = `${img.filename} ${img.prompt || ''}`.toLowerCase();
+                    ok = ok && text.includes(q);
+                }
+                if (modelVal) {
+                    ok = ok && (img.model === modelVal);
+                }
+                if (timeVal) {
+                    const t = new Date(img.created.replace(/-/g,'/')).getTime();
+                    if (timeVal === '24h') ok = ok && (now - t <= 24*3600*1000);
+                    if (timeVal === '7d') ok = ok && (now - t <= 7*24*3600*1000);
+                    if (timeVal === '30d') ok = ok && (now - t <= 30*24*3600*1000);
+                }
+                return ok;
+            });
+            totalImages = filteredImages.length;
+            displayPage(currentPage);
+            updatePagination();
+        }
+
         // 页面加载完成后加载画廊
         document.addEventListener('DOMContentLoaded', loadGallery);
 
@@ -584,6 +693,27 @@
                     alert('删除请求失败: ' + error.message);
                 });
             }
+        }
+        // 主题切换
+        function initTheme() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            setTheme(saved);
+        }
+        function setTheme(mode) {
+            if (mode === 'dark') {
+                document.body.classList.add('dark');
+                themeIcon.className = 'fas fa-sun';
+                themeText.textContent = '浅色';
+            } else {
+                document.body.classList.remove('dark');
+                themeIcon.className = 'fas fa-moon';
+                themeText.textContent = '深色';
+            }
+            localStorage.setItem('theme', mode);
+        }
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
         }
     </script>
 </body>

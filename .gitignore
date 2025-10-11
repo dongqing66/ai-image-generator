@@ -62,7 +62,12 @@ Thumbs.db
 *.log
 
 # API Keys (重要!)
+.env
 .env.local
 .env.production
 config.py
 secrets.py
+
+# Backup files
+*.zip
+backup_*

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ai-image-generator
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: REPLICATE_API_TOKEN
+        sync: false
+      - key: FLASK_ENV
+        value: production
+    autoDeploy: true
