@@ -44,19 +44,38 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def save_image(image_data, filename_prefix="flux"):
-    """保存图像并返回文件路径"""
+    """保存图像并返回文件路径
+
+    支持多种格式的 image_data:
+    - URL 字符串
+    - FileOutput 对象（有 read() 方法）
+    - 列表（包含上述任一类型）
+    """
+    import requests
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
     filename = f"{filename_prefix}_{timestamp}_{unique_id}.png"
     filepath = os.path.join(app.config['GENERATED_FOLDER'], filename)
-    
+
+    # 处理列表格式
     if isinstance(image_data, list):
+        image_data = image_data[0]
+
+    # 判断是 URL 字符串还是文件对象
+    if isinstance(image_data, str):
+        # 是 URL，下载图片
+        response = requests.get(image_data, timeout=30)
+        response.raise_for_status()
         with open(filepath, 'wb') as f:
-            f.write(image_data[0].read())
-    else:
+            f.write(response.content)
+    elif hasattr(image_data, 'read'):
+        # 是文件对象，直接读取
         with open(filepath, 'wb') as f:
             f.write(image_data.read())
-    
+    else:
+        raise ValueError(f"不支持的图像数据类型: {type(image_data)}")
+
     return filename
 
 @app.route('/')
