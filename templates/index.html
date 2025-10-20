@@ -1,214 +1,241 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎨 AI 图像生成器</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 图像生成器</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .dark .gradient-bg,
-        body.dark {
-            background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
-        }
-        .glass {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .dark .glass {
-            background: rgba(17, 24, 39, 0.6);
-            border-color: rgba(255,255,255,0.08);
-        }
-        .loading {
-            display: none;
-        }
-        .loading.show {
-            display: block;
-        }
-        .image-container {
-            transition: transform 0.3s ease;
-        }
-        .image-container:hover {
-            transform: scale(1.05);
-        }
-    </style>
+    <link href="{{ url_for('static', filename='css/ui.css') }}" rel="stylesheet">
 </head>
-<body class="gradient-bg min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <!-- 头部 -->
-        <div class="flex items-center justify-between mb-8">
-            <div class="text-center md:text-left">
-                <h1 class="text-4xl font-bold text-white mb-2">
-                    🎨 AI 图像生成器
+<body class="min-h-screen antialiased">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-6 md:mb-8">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                    <span>🎨</span>
+                    <span>AI 图像生成器</span>
                 </h1>
-                <p class="text-lg text-gray-200">使用最新的 FLUX 1.1 Pro Ultra 和其他顶级 AI 模型创造惊艳的图像</p>
+                <p class="mt-1 text-sm md:text-base mute">基于 Replicate 的多模型图像生成与编辑</p>
             </div>
             <div class="flex items-center gap-3">
-                <button id="theme-toggle" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all flex items-center gap-2">
-                    <i id="theme-icon" class="fas fa-moon"></i>
+                <button id="theme-toggle" class="btn btn-secondary" aria-label="切换深浅主题" aria-pressed="false">
+                    <i id="theme-icon" class="fas fa-moon" aria-hidden="true"></i>
                     <span id="theme-text">深色</span>
                 </button>
             </div>
-        </div>
+        </header>
 
-        <!-- 功能选项卡 -->
-        <div class="flex justify-center mb-6">
-            <div class="glass rounded-lg p-2">
-                <button id="text2img-tab" class="px-6 py-2 rounded-md text-white bg-blue-500 mr-2 transition-all">
-                    <i class="fas fa-magic mr-2"></i>文字生图
+        <!-- Mobile tabs -->
+        <div class="md:hidden mb-4" role="tablist" aria-label="模式切换">
+            <div class="tabs" aria-orientation="horizontal">
+                <button id="text2img-tab" role="tab" aria-selected="true" aria-controls="text2img-panel" class="tab active">
+                    <i class="fas fa-wand-magic-sparkles mr-1" aria-hidden="true"></i>
+                    文字生图
                 </button>
-                <button id="img2img-tab" class="px-6 py-2 rounded-md text-white hover:bg-blue-500 transition-all">
-                    <i class="fas fa-image mr-2"></i>图生图
-                </button>
-            </div>
-        </div>
-
-        <!-- 文字生图界面 -->
-        <div id="text2img-panel" class="glass rounded-lg p-6 mb-6">
-            <div class="max-w-2xl mx-auto">
-                <div class="mb-4">
-                    <label class="block text-white text-sm font-bold mb-2">
-                        <i class="fas fa-robot mr-2"></i>选择模型
-                    </label>
-                    <select id="text-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
-                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
-                        <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
-                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
-                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
-                        <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
-                        <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
-                        <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
-                        <option value="meta/llama-2-11b-vision-instruct">Llama Vision (多模态)</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-white text-sm font-bold mb-2">
-                        <i class="fas fa-pen mr-2"></i>输入提示词
-                    </label>
-                    <textarea 
-                        id="text-prompt" 
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"
-                        placeholder="描述你想要生成的图像，例如：a beautiful sunset over mountains, digital art"
-                    ></textarea>
-                </div>
-                <button 
-                    id="generate-btn" 
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
-                >
-                    <i class="fas fa-wand-magic-sparkles mr-2"></i>生成图像
+                <button id="img2img-tab" role="tab" aria-selected="false" aria-controls="img2img-panel" class="tab">
+                    <i class="fas fa-image mr-1" aria-hidden="true"></i>
+                    图生图
                 </button>
             </div>
         </div>
 
-        <!-- 图生图界面 -->
-        <div id="img2img-panel" class="glass rounded-lg p-6 mb-6 hidden">
-            <div class="max-w-2xl mx-auto">
-                <div class="mb-4">
-                    <label class="block text-white text-sm font-bold mb-2">
-                        <i class="fas fa-robot mr-2"></i>选择模型
-                    </label>
-                    <select id="img-model-select" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
-                        <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
-                        <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
-                        <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
-                        <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
-                        <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
-                        <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
-                        <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
-                    </select>
+        <!-- Main two-column layout -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+            <!-- 文本生图 -->
+            <section id="text2img-panel" class="space-y-4 md:space-y-6">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-wand-magic-sparkles text-blue-600" aria-hidden="true"></i>
+                    <h2 class="text-xl font-semibold">文字生图</h2>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-white text-sm font-bold mb-2">
-                        <i class="fas fa-upload mr-2"></i>上传原图（最多3张）
-                    </label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        <input type="file" id="image-upload" accept="image/*" multiple max="3" class="hidden">
-                        <div id="drop-zone" class="cursor-pointer">
-                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
-                            <p class="text-white">点击或拖拽图像文件到这里</p>
-                            <p class="text-sm text-gray-300 mt-2">支持 JPG, PNG 格式，最多选择3张图片</p>
-                        </div>
-                        <div id="preview-container" class="hidden mt-4">
-                            <div class="text-sm text-gray-300 mb-2">已选择 <span id="selected-count">0</span> 张图片:</div>
-                            <div id="preview-grid" class="grid grid-cols-3 gap-2 max-w-md mx-auto">
-                                <!-- 预览图片会显示在这里 -->
-                            </div>
-                            <button id="clear-images" class="mt-2 text-red-400 hover:text-red-300 text-sm">
-                                <i class="fas fa-trash mr-1"></i>清除所有图片
+
+                <!-- 模型选择 -->
+                <div class="card" aria-labelledby="text-model-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-robot" aria-hidden="true"></i>
+                        <span id="text-model-label" class="font-medium">选择模型</span>
+                    </div>
+                    <div class="card-body">
+                        <label class="sr-only" for="text-model-select">模型</label>
+                        <select id="text-model-select" class="select" aria-describedby="text-model-help">
+                            <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                            <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
+                            <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                            <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
+                            <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
+                            <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
+                            <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
+                            <option value="meta/llama-2-11b-vision-instruct">Llama Vision (多模态)</option>
+                        </select>
+                        <p id="text-model-help" class="helper-text mt-2">不同模型在生成速度与质量上有所差异。</p>
+                    </div>
+                </div>
+
+                <!-- 提示词 -->
+                <div class="card" aria-labelledby="text-prompt-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-pen" aria-hidden="true"></i>
+                        <span id="text-prompt-label" class="font-medium">输入提示词</span>
+                    </div>
+                    <div class="card-body space-y-3">
+                        <label class="sr-only" for="text-prompt">提示词</label>
+                        <textarea id="text-prompt" class="textarea" placeholder="描述你想要生成的图像，例如：a beautiful sunset over mountains, digital art"></textarea>
+                        <div class="flex items-center justify-between">
+                            <p class="helper-text">使用自然语言，尽量具体。</p>
+                            <button id="generate-btn" class="btn btn-primary">
+                                <span class="spinner hidden" aria-hidden="true"></span>
+                                <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                <span>生成图像</span>
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-white text-sm font-bold mb-2">
-                        <i class="fas fa-pen mr-2"></i>修改提示词
-                    </label>
-                    <textarea 
-                        id="img-prompt" 
-                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"
-                        placeholder="描述你希望如何修改这张图像"
-                    ></textarea>
+
+                <!-- 进阶参数（占位，不影响后端） -->
+                <div class="card" aria-labelledby="adv-text-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                        <span id="adv-text-label" class="font-medium">进阶参数</span>
+                    </div>
+                    <div class="card-body space-y-4">
+                        <div>
+                            <label for="steps" class="block text-sm mb-1">推理步数（占位）</label>
+                            <input id="steps" type="range" min="10" max="50" value="30" class="range" />
+                        </div>
+                        <div>
+                            <label for="guidance" class="block text-sm mb-1">提示强度（占位）</label>
+                            <input id="guidance" type="range" min="1" max="20" value="7" class="range" />
+                        </div>
+                        <p class="helper-text">以上为 UI 预设，当前版本未传递给后端。</p>
+                    </div>
                 </div>
-                <button 
-                    id="img2img-btn" 
-                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
-                    disabled
-                >
-                    <i class="fas fa-magic mr-2"></i>生成新图像
-                </button>
+            </section>
+
+            <!-- 图生图 -->
+            <section id="img2img-panel" class="space-y-4 md:space-y-6 hidden md:block">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-image text-violet-600" aria-hidden="true"></i>
+                    <h2 class="text-xl font-semibold">图生图</h2>
+                </div>
+
+                <!-- 模型选择 -->
+                <div class="card" aria-labelledby="img-model-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-robot" aria-hidden="true"></i>
+                        <span id="img-model-label" class="font-medium">选择模型</span>
+                    </div>
+                    <div class="card-body">
+                        <label class="sr-only" for="img-model-select">模型</label>
+                        <select id="img-model-select" class="select">
+                            <option value="google/nano-banana">Google Nano Banana (轻量级)</option>
+                            <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra (4K超高质量)</option>
+                            <option value="black-forest-labs/flux-kontext-pro">FLUX Kontext Pro (图像编辑)</option>
+                            <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro (精准)</option>
+                            <option value="google/imagen-4">Google Imagen 4 (高质量)</option>
+                            <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo (快速)</option>
+                            <option value="black-forest-labs/flux-dev">FLUX Dev (实验性)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 上传区域 -->
+                <div class="card" aria-labelledby="upload-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-upload" aria-hidden="true"></i>
+                        <span id="upload-label" class="font-medium">上传原图（最多3张）</span>
+                    </div>
+                    <div class="card-body">
+                        <input type="file" id="image-upload" accept="image/*" multiple max="3" class="hidden" aria-hidden="true" />
+                        <div id="drop-zone" class="dropzone cursor-pointer" role="button" tabindex="0" aria-describedby="drop-desc">
+                            <i class="fas fa-cloud-upload-alt text-3xl mute mb-2" aria-hidden="true"></i>
+                            <p>点击或拖拽图像文件到这里</p>
+                            <p id="drop-desc" class="helper-text mt-1">支持 JPG、PNG，最多3张</p>
+                        </div>
+                        <div id="preview-container" class="hidden mt-4" aria-live="polite">
+                            <div class="helper-text mb-2">已选择 <span id="selected-count">0</span> 张图片：</div>
+                            <div id="preview-grid" class="grid grid-cols-3 gap-2"></div>
+                            <button id="clear-images" class="btn btn-ghost text-red-600 mt-2">
+                                <i class="fas fa-trash mr-1" aria-hidden="true"></i>
+                                清除所有图片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 修改提示词 + 操作按钮 -->
+                <div class="card" aria-labelledby="img-prompt-label">
+                    <div class="card-header flex items-center gap-2">
+                        <i class="fas fa-pen" aria-hidden="true"></i>
+                        <span id="img-prompt-label" class="font-medium">修改提示词</span>
+                    </div>
+                    <div class="card-body space-y-3">
+                        <label class="sr-only" for="img-prompt">提示词</label>
+                        <textarea id="img-prompt" class="textarea" placeholder="描述你希望如何修改这张图像"></textarea>
+                        <div class="flex items-center justify-between">
+                            <p class="helper-text">选择图片后方可生成。</p>
+                            <button id="img2img-btn" class="btn btn-primary" disabled>
+                                <span class="spinner hidden" aria-hidden="true"></span>
+                                <i class="fas fa-magic" aria-hidden="true"></i>
+                                <span>生成新图像</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading state -->
+        <div id="loading" class="hidden mt-8" role="status" aria-live="polite">
+            <div class="card max-w-md mx-auto text-center p-6">
+                <div class="inline-spinner mx-auto mb-4" aria-hidden="true"></div>
+                <p class="text-lg font-medium">AI 正在创作中...</p>
+                <p class="helper-text mt-1">这可能需要几秒钟</p>
             </div>
         </div>
 
-        <!-- 加载动画 -->
-        <div id="loading" class="loading text-center text-white">
-            <div class="glass rounded-lg p-6 max-w-md mx-auto">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                <p class="text-lg">🎨 AI 正在创作中...</p>
-                <p class="text-sm text-gray-300 mt-2">这可能需要几秒钟</p>
-            </div>
-        </div>
-
-        <!-- 结果展示 -->
-        <div id="result" class="hidden text-center">
-            <div class="glass rounded-lg p-6 max-w-2xl mx-auto">
-                <h3 class="text-xl font-bold text-white mb-4">生成结果</h3>
+        <!-- Result -->
+        <section id="result" class="hidden mt-8">
+            <div class="card p-4 md:p-6 max-w-3xl mx-auto">
+                <h3 class="text-xl font-semibold mb-4">生成结果</h3>
                 <div class="image-container">
-                    <img id="result-image" class="max-w-full rounded-lg shadow-lg mx-auto mb-4">
+                    <img id="result-image" class="w-full rounded-lg shadow-md mb-4" alt="生成的图像" />
                 </div>
-                <p id="result-prompt" class="text-gray-200 mb-4 italic"></p>
-                <div class="flex justify-center flex-wrap gap-3">
-                    <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                        <i class="fas fa-download mr-2"></i>下载
+                <p id="result-prompt" class="mute mb-4"></p>
+                <div class="flex flex-wrap gap-2 md:gap-3">
+                    <button id="download-btn" class="btn btn-secondary">
+                        <i class="fas fa-download" aria-hidden="true"></i>
+                        <span>下载</span>
                     </button>
-                    <button id="copy-prompt-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                        <i class="fas fa-copy mr-2"></i>复制提示词
+                    <button id="copy-prompt-btn" class="btn btn-ghost">
+                        <i class="fas fa-copy" aria-hidden="true"></i>
+                        <span>复制提示词</span>
                     </button>
-                    <button id="copy-link-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                        <i class="fas fa-link mr-2"></i>复制链接
+                    <button id="copy-link-btn" class="btn btn-ghost">
+                        <i class="fas fa-link" aria-hidden="true"></i>
+                        <span>复制链接</span>
                     </button>
-                    <button id="delete-current-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                        <i class="fas fa-trash mr-2"></i>删除本图
+                    <button id="delete-current-btn" class="btn btn-ghost text-red-600">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
+                        <span>删除本图</span>
                     </button>
-                    <button id="generate-again-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                        <i class="fas fa-redo mr-2"></i>再次生成
+                    <button id="generate-again-btn" class="btn btn-primary ml-auto">
+                        <i class="fas fa-redo" aria-hidden="true"></i>
+                        <span>再次生成</span>
                     </button>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- 图片画廊 -->
-        <div class="mt-8">
-            <h3 class="text-2xl font-bold text-white text-center mb-6">
-                <i class="fas fa-images mr-2"></i>最近生成的图像
+        <!-- Gallery -->
+        <section class="mt-10">
+            <h3 class="text-xl md:text-2xl font-semibold text-center mb-4 md:mb-6">
+                <i class="fas fa-images mr-2" aria-hidden="true"></i>最近生成的图像
             </h3>
-            <div class="glass rounded-lg p-4 mb-6">
+            <div class="card p-4 mb-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input id="search-input" placeholder="搜索文件名或提示词" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" />
-                    <select id="model-filter" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                    <input id="search-input" class="input" placeholder="搜索文件名或提示词" />
+                    <select id="model-filter" class="select">
                         <option value="">全部模型</option>
                         <option value="google/nano-banana">Google Nano Banana</option>
                         <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra</option>
@@ -218,7 +245,7 @@
                         <option value="ideogram-ai/ideogram-v3-turbo">Ideogram V3 Turbo</option>
                         <option value="black-forest-labs/flux-dev">FLUX Dev</option>
                     </select>
-                    <select id="time-filter" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 bg-white">
+                    <select id="time-filter" class="select">
                         <option value="">全部时间</option>
                         <option value="24h">近24小时</option>
                         <option value="7d">近7天</option>
@@ -226,99 +253,120 @@
                     </select>
                 </div>
             </div>
-            <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <!-- 图像会动态加载到这里 -->
-            </div>
-            
-            <!-- 分页控件 -->
+
+            <div id="gallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+
             <div id="pagination" class="flex justify-center items-center space-x-4 mt-6">
-                <button id="prev-btn" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <i class="fas fa-chevron-left mr-2"></i>上一页
+                <button id="prev-btn" class="btn btn-secondary" disabled>
+                    <i class="fas fa-chevron-left mr-1" aria-hidden="true"></i> 上一页
                 </button>
-                
-                <div id="page-info" class="glass px-4 py-2 rounded-lg text-white">
+                <div id="page-info" class="btn btn-ghost cursor-default" aria-live="polite">
                     第 <span id="current-page">1</span> 页，共 <span id="total-pages">1</span> 页
                 </div>
-                
-                <button id="next-btn" class="glass px-4 py-2 rounded-lg text-white hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    下一页<i class="fas fa-chevron-right ml-2"></i>
+                <button id="next-btn" class="btn btn-secondary">
+                    下一页 <i class="fas fa-chevron-right ml-1" aria-hidden="true"></i>
                 </button>
             </div>
-        </div>
+        </section>
+
+        <!-- Toasts -->
+        <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     </div>
+
+    <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
 
     <script>
         let currentFilename = null;
         let currentPrompt = '';
         let currentModel = '';
         let currentPage = 1;
-        let imagesPerPage = 9;  // 每页显示9张图片（3x3网格）
+        let imagesPerPage = 9;
         let totalImages = 0;
         let allImages = [];
         let filteredImages = [];
 
-        // 选项卡切换
-        document.getElementById('text2img-tab').addEventListener('click', function() {
-            switchTab('text2img');
-        });
-
-        const themeToggle = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        const themeText = document.getElementById('theme-text');
-        initTheme();
-        themeToggle.addEventListener('click', toggleTheme);
-
-
-        document.getElementById('img2img-tab').addEventListener('click', function() {
-            switchTab('img2img');
-        });
-
+        // Mobile tab switching
+        const textTab = document.getElementById('text2img-tab');
+        const imgTab = document.getElementById('img2img-tab');
         function switchTab(tab) {
-            // 更新按钮样式
-            document.querySelectorAll('[id$="-tab"]').forEach(btn => {
-                btn.classList.remove('bg-blue-500');
-                btn.classList.add('hover:bg-blue-500');
-            });
-            document.getElementById(tab + '-tab').classList.add('bg-blue-500');
-            document.getElementById(tab + '-tab').classList.remove('hover:bg-blue-500');
+            const isText = tab === 'text2img';
+            textTab.classList.toggle('active', isText);
+            textTab.setAttribute('aria-selected', isText ? 'true' : 'false');
+            imgTab.classList.toggle('active', !isText);
+            imgTab.setAttribute('aria-selected', !isText ? 'true' : 'false');
+            // Only affect mobile layout; desktop always shows both (via md:block)
+            const textPanel = document.getElementById('text2img-panel');
+            const imgPanel = document.getElementById('img2img-panel');
+            if (window.matchMedia('(max-width: 767px)').matches) {
+                textPanel.classList.toggle('hidden', !isText);
+                imgPanel.classList.toggle('hidden', isText);
+            }
+        }
+        textTab.addEventListener('click', () => switchTab('text2img'));
+        imgTab.addEventListener('click', () => switchTab('img2img'));
+        textTab.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') { e.preventDefault(); switchTab('img2img'); imgTab.focus(); } });
+        imgTab.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') { e.preventDefault(); switchTab('text2img'); textTab.focus(); } });
 
-            // 切换面板
-            document.getElementById('text2img-panel').classList.toggle('hidden', tab !== 'text2img');
-            document.getElementById('img2img-panel').classList.toggle('hidden', tab !== 'img2img');
+        // Toasts
+        function showToast(type, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <i class="fas ${type === 'error' ? 'fa-circle-exclamation text-red-600' : 'fa-circle-check text-green-600'}" aria-hidden="true"></i>
+                <div>${message}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-4px)';
+                setTimeout(() => toast.remove(), 250);
+            }, 3000);
         }
 
-        // 文字生图
-        document.getElementById('generate-btn').addEventListener('click', function() {
+        // Button loading helper
+        function setButtonLoading(btn, loading) {
+            if (!btn) return;
+            const spinner = btn.querySelector('.spinner');
+            if (loading) {
+                btn.setAttribute('aria-busy', 'true');
+                btn.disabled = true;
+                if (spinner) spinner.classList.remove('hidden');
+            } else {
+                btn.removeAttribute('aria-busy');
+                btn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            }
+        }
+
+        // Generate (text to image)
+        document.getElementById('generate-btn').addEventListener('click', function () {
+            const btn = this;
             const prompt = document.getElementById('text-prompt').value.trim();
             const model = document.getElementById('text-model-select').value;
-            if (!prompt) {
-                alert('请输入提示词！');
-                return;
-            }
-            generateImage(prompt, model, 'text2img');
+            if (!prompt) { showToast('error', '请输入提示词'); return; }
+            setButtonLoading(btn, true);
+            generateImage(prompt, model)
+                .catch(error => showToast('error', '请求失败: ' + error.message))
+                .finally(() => setButtonLoading(btn, false));
         });
 
-        // 图生图
-        document.getElementById('img2img-btn').addEventListener('click', function() {
+        // Generate (img to img)
+        document.getElementById('img2img-btn').addEventListener('click', function () {
+            const btn = this;
             const prompt = document.getElementById('img-prompt').value.trim();
             const model = document.getElementById('img-model-select').value;
             const fileInput = document.getElementById('image-upload');
-            if (!prompt) {
-                alert('请输入提示词！');
-                return;
-            }
-            if (!fileInput.files.length) {
-                alert('请上传图像！');
-                return;
-            }
-            if (fileInput.files.length > 3) {
-                alert('最多只能上传3张图片！');
-                return;
-            }
-            generateImageFromImage(prompt, fileInput.files, model);
+            if (!prompt) { showToast('error', '请输入提示词'); return; }
+            if (!fileInput.files.length) { showToast('error', '请上传图像'); return; }
+            if (fileInput.files.length > 3) { showToast('error', '最多只能上传3张图片'); return; }
+            setButtonLoading(btn, true);
+            generateImageFromImage(prompt, fileInput.files, model)
+                .catch(error => showToast('error', '请求失败: ' + error.message))
+                .finally(() => setButtonLoading(btn, false));
         });
 
-        // 文件上传处理
+        // Upload handling
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('image-upload');
         const previewContainer = document.getElementById('preview-container');
@@ -328,34 +376,22 @@
         const clearImagesBtn = document.getElementById('clear-images');
 
         dropZone.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-blue-500');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-blue-500');
-        });
-
+        dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        ['dragleave','dragend'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('dragover')));
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('border-blue-500');
+            dropZone.classList.remove('dragover');
             const files = Array.from(e.dataTransfer.files);
-            
-            // 只保留图片文件，最多3张
-            const imageFiles = files.filter(file => file.type.startsWith('image/')).slice(0, 3);
-            
+            const imageFiles = files.filter(f => f.type.startsWith('image/')).slice(0, 3);
             if (imageFiles.length > 0) {
-                // 创建新的FileList
                 const dt = new DataTransfer();
-                imageFiles.forEach(file => dt.items.add(file));
+                imageFiles.forEach(f => dt.items.add(f));
                 fileInput.files = dt.files;
                 handleFileSelect();
             }
         });
+        fileInput.addEventListener('change', handleFileSelect);
 
         clearImagesBtn.addEventListener('click', () => {
             fileInput.value = '';
@@ -363,268 +399,179 @@
             previewGrid.innerHTML = '';
             selectedCount.textContent = '0';
             img2imgBtn.disabled = true;
-            img2imgBtn.classList.add('opacity-50');
         });
 
         function handleFileSelect() {
             const files = Array.from(fileInput.files);
-            
-            if (files.length > 3) {
-                alert('最多只能选择3张图片！');
-                return;
-            }
-            
+            if (files.length > 3) { showToast('error', '最多只能选择3张图片'); return; }
             if (files.length > 0) {
                 updatePreview(files);
                 img2imgBtn.disabled = false;
-                img2imgBtn.classList.remove('opacity-50');
             } else {
                 previewContainer.classList.add('hidden');
                 img2imgBtn.disabled = true;
-                img2imgBtn.classList.add('opacity-50');
             }
         }
 
         function updatePreview(files) {
             previewGrid.innerHTML = '';
             selectedCount.textContent = files.length;
-            
             files.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const previewDiv = document.createElement('div');
-                    previewDiv.className = 'relative';
-                    previewDiv.innerHTML = `
-                        <img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg">
-                        <button onclick="removeImage(${index})" 
-                                class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                    const wrap = document.createElement('div');
+                    wrap.className = 'relative';
+                    wrap.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg" alt="已选择图片预览" />
+                        <button aria-label="移除图片" onclick="removeImage(${index})" class="absolute -top-2 -right-2 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs" style="background: var(--danger);">
                             ×
                         </button>
-                        <div class="text-xs text-gray-300 mt-1 text-center truncate">${file.name}</div>
+                        <div class="text-xs mute mt-1 text-center truncate">${file.name}</div>
                     `;
-                    previewGrid.appendChild(previewDiv);
+                    previewGrid.appendChild(wrap);
                 };
                 reader.readAsDataURL(file);
             });
-            
             previewContainer.classList.remove('hidden');
         }
 
         function removeImage(index) {
             const dt = new DataTransfer();
             const files = Array.from(fileInput.files);
-            
-            files.forEach((file, i) => {
-                if (i !== index) {
-                    dt.items.add(file);
-                }
-            });
-            
+            files.forEach((file, i) => { if (i !== index) dt.items.add(file); });
             fileInput.files = dt.files;
             handleFileSelect();
         }
+        window.removeImage = removeImage; // expose for inline onclick
 
-        // 生成图像（文字生图）
-        function generateImage(prompt, model, type = 'text2img') {
+        // API calls
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+        }
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function generateImage(prompt, model) {
             showLoading();
-            
-            fetch('/generate', {
+            return fetch('/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    prompt: prompt,
-                    model: model
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, model })
             })
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 hideLoading();
                 if (data.success) {
                     showResult(data.image_url, data.prompt, data.filename, data.model);
                     loadGallery();
                 } else {
-                    alert('生成失败: ' + data.error);
+                    showToast('error', '生成失败: ' + data.error);
                 }
             })
-            .catch(error => {
-                hideLoading();
-                alert('请求失败: ' + error.message);
-            });
+            .catch(err => { hideLoading(); throw err; });
         }
 
-        // 图生图
         function generateImageFromImage(prompt, files, model) {
             showLoading();
-            
             const formData = new FormData();
-            
-            // 添加所有图片文件
-            Array.from(files).forEach((file, index) => {
-                formData.append(`image${index}`, file);
-            });
-            
+            Array.from(files).forEach((file, index) => formData.append(`image${index}`, file));
             formData.append('prompt', prompt);
             formData.append('model', model);
             formData.append('imageCount', files.length);
-
-            fetch('/img2img', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                if (data.success) {
-                    showResult(data.image_url, data.prompt, data.filename, data.model);
-                    loadGallery();
-                } else {
-                    alert('生成失败: ' + data.error);
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                alert('请求失败: ' + error.message);
-            });
-        }
-
-        function showLoading() {
-            document.getElementById('loading').classList.add('show');
-            document.getElementById('result').classList.add('hidden');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').classList.remove('show');
+            return fetch('/img2img', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        showResult(data.image_url, data.prompt, data.filename, data.model);
+                        loadGallery();
+                    } else {
+                        showToast('error', '生成失败: ' + data.error);
+                    }
+                })
+                .catch(err => { hideLoading(); throw err; });
         }
 
         function showResult(imageUrl, prompt, filename, model) {
             currentFilename = filename;
-            currentPrompt = prompt;
-            currentModel = model;
+            currentPrompt = prompt || '';
+            currentModel = model || '';
             document.getElementById('result-image').src = imageUrl;
-            document.getElementById('result-prompt').innerHTML = `<strong>提示词:</strong> "${prompt}"<br><strong>模型:</strong> ${model}`;
+            const metaHtml = '<strong>提示词:</strong> "' + currentPrompt + '"' + (currentModel ? ('<br><strong>模型:</strong> ' + currentModel) : '');
+            document.getElementById('result-prompt').innerHTML = metaHtml;
             document.getElementById('result').classList.remove('hidden');
-            
-            // 滚动到结果
-            document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // 下载/复制/删除当前结果
-        document.getElementById('download-btn').addEventListener('click', function() {
-            if (currentFilename) {
-                window.open(`/download/${currentFilename}`, '_blank');
-            }
-        });
-        document.getElementById('copy-prompt-btn').addEventListener('click', async function() {
-            if (currentPrompt) {
-                await navigator.clipboard.writeText(currentPrompt);
-            }
-        });
-        document.getElementById('copy-link-btn').addEventListener('click', async function() {
-            if (currentFilename) {
-                const link = `${location.origin}/static/images/${currentFilename}`;
-                await navigator.clipboard.writeText(link);
-            }
-        });
-        document.getElementById('delete-current-btn').addEventListener('click', function() {
-            if (currentFilename) {
-                deleteImage(currentFilename);
-            }
-        });
+        // Result actions
+        document.getElementById('download-btn').addEventListener('click', () => { if (currentFilename) window.open(`/download/${currentFilename}`, '_blank'); });
+        document.getElementById('copy-prompt-btn').addEventListener('click', async () => { if (currentPrompt) { await navigator.clipboard.writeText(currentPrompt); showToast('success', '已复制提示词'); } });
+        document.getElementById('copy-link-btn').addEventListener('click', async () => { if (currentFilename) { const link = `${location.origin}/static/images/${currentFilename}`; await navigator.clipboard.writeText(link); showToast('success', '已复制图片链接'); } });
+        document.getElementById('delete-current-btn').addEventListener('click', () => { if (currentFilename) deleteImage(currentFilename); });
+        document.getElementById('generate-again-btn').addEventListener('click', () => { document.getElementById('result').classList.add('hidden'); });
 
-        // 再次生成
-        document.getElementById('generate-again-btn').addEventListener('click', function() {
-            document.getElementById('result').classList.add('hidden');
-        });
-
-        // 加载画廊
+        // Gallery
         function loadGallery() {
             fetch('/gallery')
-                .then(response => response.json())
-                .then(data => {
-                    allImages = data.images;
-                    applyFilters();
-                })
+                .then(r => r.json())
+                .then(data => { allImages = data.images; applyFilters(); })
                 .catch(error => console.error('加载画廊失败:', error));
         }
 
-        // 显示指定页面的图像
         function displayPage(page) {
             const gallery = document.getElementById('gallery');
             gallery.innerHTML = '';
-            
             const startIndex = (page - 1) * imagesPerPage;
             const endIndex = Math.min(startIndex + imagesPerPage, totalImages);
             const pageImages = filteredImages.slice(startIndex, endIndex);
-            
+            if (pageImages.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'col-span-full card p-8 text-center';
+                empty.innerHTML = '<div class="inline-spinner mx-auto mb-3"></div><div class="mute">暂无图片，生成第一张图像试试吧。</div>';
+                gallery.appendChild(empty);
+                return;
+            }
             pageImages.forEach(image => {
                 const imageDiv = document.createElement('div');
-                imageDiv.className = 'glass rounded-lg p-2 image-container relative';
+                imageDiv.className = 'card p-2 relative';
                 imageDiv.innerHTML = `
-                    <img src="${image.url}" class="w-full h-48 object-cover rounded-lg mb-2" alt="Generated image">
+                    <img src="${image.url}" class="w-full h-48 object-cover rounded-lg mb-2" alt="生成的图像">
                     <div class="text-center">
-                        <p class="text-xs text-gray-300">${image.created}</p>
+                        <p class="text-xs mute">${image.created}</p>
                         <div class="flex gap-2 justify-center mt-2">
-                            <button onclick="window.open('/download/${image.filename}', '_blank')" 
-                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition-all">
-                                <i class="fas fa-download mr-1"></i>下载
-                            </button>
-                            <button onclick="deleteImage('${image.filename}')" 
-                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition-all">
-                                <i class="fas fa-trash mr-1"></i>删除
-                            </button>
+                            <button onclick="window.open('/download/${image.filename}', '_blank')" class="btn btn-secondary text-xs py-1 px-2"><i class=\"fas fa-download mr-1\"></i> 下载</button>
+                            <button onclick="deleteImage('${image.filename}')" class="btn btn-ghost text-xs py-1 px-2" style="color: var(--danger)"><i class=\"fas fa-trash mr-1\"></i> 删除</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 gallery.appendChild(imageDiv);
             });
         }
 
-        // 更新分页控件
         function updatePagination() {
-            const totalPages = Math.ceil(totalImages / imagesPerPage);
+            const totalPages = Math.ceil(totalImages / imagesPerPage) || 1;
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
             const currentPageSpan = document.getElementById('current-page');
             const totalPagesSpan = document.getElementById('total-pages');
             const paginationDiv = document.getElementById('pagination');
-            
-            // 更新页面信息
+
             currentPageSpan.textContent = currentPage;
             totalPagesSpan.textContent = totalPages;
-            
-            // 更新按钮状态
             prevBtn.disabled = currentPage <= 1;
             nextBtn.disabled = currentPage >= totalPages;
-            
-            // 如果只有一页或没有图片，隐藏分页控件
-            if (totalPages <= 1) {
-                paginationDiv.style.display = 'none';
-            } else {
-                paginationDiv.style.display = 'flex';
-            }
+            paginationDiv.style.display = totalPages <= 1 ? 'none' : 'flex';
         }
 
-        // 分页按钮事件监听
-        document.getElementById('prev-btn').addEventListener('click', function() {
-            if (currentPage > 1) {
-                currentPage--;
-                displayPage(currentPage);
-                updatePagination();
-            }
+        document.getElementById('prev-btn').addEventListener('click', function () {
+            if (currentPage > 1) { currentPage--; displayPage(currentPage); updatePagination(); }
+        });
+        document.getElementById('next-btn').addEventListener('click', function () {
+            const totalPages = Math.ceil(totalImages / imagesPerPage) || 1;
+            if (currentPage < totalPages) { currentPage++; displayPage(currentPage); updatePagination(); }
         });
 
-        document.getElementById('next-btn').addEventListener('click', function() {
-            const totalPages = Math.ceil(totalImages / imagesPerPage);
-            if (currentPage < totalPages) {
-                currentPage++;
-                displayPage(currentPage);
-                updatePagination();
-            }
-        });
-
-        // 过滤与搜索
         const searchInput = document.getElementById('search-input');
         const modelFilter = document.getElementById('model-filter');
         const timeFilter = document.getElementById('time-filter');
@@ -637,11 +584,10 @@
             const modelVal = modelFilter ? modelFilter.value : '';
             const timeVal = timeFilter ? timeFilter.value : '';
             const now = Date.now();
-
             filteredImages = allImages.filter(img => {
                 let ok = true;
                 if (q) {
-                    const text = `${img.filename} ${img.prompt || ''}`.toLowerCase();
+                    const text = `${img.filename} ${(img.prompt || '')}`.toLowerCase();
                     ok = ok && text.includes(q);
                 }
                 if (modelVal) {
@@ -660,61 +606,32 @@
             updatePagination();
         }
 
-        // 页面加载完成后加载画廊
-        document.addEventListener('DOMContentLoaded', loadGallery);
-
-        // 删除图片功能
+        // Delete image API
         function deleteImage(filename) {
+            if (!filename) return;
             if (confirm('确定要删除这张图片吗？删除后无法恢复。')) {
-                fetch(`/delete/${filename}`, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
+                fetch(`/delete/${filename}`, { method: 'DELETE' })
+                .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        // 重新加载画廊
+                        showToast('success', '已删除');
                         loadGallery();
-                        // 如果删除的是当前显示的结果图片，则隐藏结果区域
                         if (currentFilename === filename) {
                             document.getElementById('result').classList.add('hidden');
                             currentFilename = null;
                         }
-                        
-                        // 如果当前页面没有图片了，回到上一页
-                        const totalPages = Math.ceil((totalImages - 1) / imagesPerPage);
-                        if (currentPage > totalPages && totalPages > 0) {
-                            currentPage = totalPages;
-                        }
+                        const totalPages = Math.ceil((totalImages - 1) / imagesPerPage) || 1;
+                        if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
                     } else {
-                        alert('删除失败: ' + data.error);
+                        showToast('error', '删除失败: ' + data.error);
                     }
                 })
-                .catch(error => {
-                    alert('删除请求失败: ' + error.message);
-                });
+                .catch(error => showToast('error', '删除请求失败: ' + error.message));
             }
         }
-        // 主题切换
-        function initTheme() {
-            const saved = localStorage.getItem('theme') || 'dark';
-            setTheme(saved);
-        }
-        function setTheme(mode) {
-            if (mode === 'dark') {
-                document.body.classList.add('dark');
-                themeIcon.className = 'fas fa-sun';
-                themeText.textContent = '浅色';
-            } else {
-                document.body.classList.remove('dark');
-                themeIcon.className = 'fas fa-moon';
-                themeText.textContent = '深色';
-            }
-            localStorage.setItem('theme', mode);
-        }
-        function toggleTheme() {
-            const isDark = document.body.classList.contains('dark');
-            setTheme(isDark ? 'light' : 'dark');
-        }
+        window.deleteImage = deleteImage; // expose for inline calls
+
+        document.addEventListener('DOMContentLoaded', loadGallery);
     </script>
 </body>
 </html>
